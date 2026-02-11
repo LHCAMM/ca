@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         String
+  createdAt    DateTime @default(now())
+}
+
+model Order {
+  id                    String    @id @default(cuid())
+  wooOrderId            Int       @unique
+  orderNumber           String
+  status                String
+  total                 Decimal   @db.Decimal(10,2)
+  currency              String
+  customerFirstName     String?
+  customerLastName      String?
+  customerEmail         String?
+  paymentConfirmed      Boolean   @default(false)
+  orderMarkedProcessed  Boolean   @default(false)
+  matchedPaymentId      String?
+  createdAtWoo          DateTime
+  lastSyncedAt          DateTime  @default(now())
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  paymentEvents PaymentEvent[]
+  followUps     FollowUpTask[]
+}
+
+model PaymentEvent {
+  id              String   @id @default(cuid())
+  provider        String
+  providerRef     String?
+  amount          Decimal  @db.Decimal(10,2)
+  currency        String   @default("USD")
+  payerEmail      String?
+  payerName       String?
+  detectedAt      DateTime
+  confidence      Int
+  rawSnippet      String?
+  matchedOrderId  String?
+  decision        String   @default("pending")
+  createdAt       DateTime @default(now())
+
+  matchedOrder Order? @relation(fields: [matchedOrderId], references: [id])
+}
+
+model FollowUpTask {
+  id              String   @id @default(cuid())
+  orderId         String
+  status          String   @default("open")
+  messageText     String
+  gmailDraftId    String?
+  createdAt       DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model SystemStatus {
+  id            String   @id
+  lastSuccessAt DateTime?
+  lastError     String?
+  healthy       Boolean  @default(false)
+  updatedAt     DateTime @updatedAt
+}
+
+model IntegrationSecret {
+  id          String   @id
+  encrypted   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actor     String
+  action    String
+  details   Json
+  createdAt DateTime @default(now())
+}

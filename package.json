@@ -1,0 +1,13 @@
+{
+  "name": "clawbot-mission-control",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run -ws build",
+    "dev": "npm run -ws dev",
+    "lint": "npm run -ws lint"
+  }
+}
