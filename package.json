@@ -1,0 +1,19 @@
+{
+  "name": "mission-control",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "apps/worker"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w apps/api\" \"npm run dev -w apps/web\" \"npm run dev -w apps/worker\"",
+    "build": "npm run build -ws",
+    "lint": "npm run lint -ws",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.4.2"
+  }
+}
