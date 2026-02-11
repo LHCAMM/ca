@@ -3,11 +3,40 @@ import { prisma } from '../plugins/db';
 import { authGuard, requireRole } from '../plugins/auth';
 import { approvePayment, denyPayment } from '../services/matching';
 import { getGmailAuthUrl, exchangeCode } from '../services/gmail';
+import { verifyWooSignature, processWooWebhook } from '../services/webhook';
 
 export async function routes(app: FastifyInstance) {
-  app.addHook('preHandler', authGuard);
-
+  // Public endpoints (no auth)
   app.get('/health', async () => ({ ok: true }));
+
+  // WooCommerce webhook receiver (no auth - uses signature verification)
+  app.post('/webhooks/woo', async (req, reply) => {
+    try {
+      const signature = req.headers['x-wc-webhook-signature'] as string;
+      const payload = JSON.stringify(req.body);
+
+      // Verify signature
+      if (!verifyWooSignature(payload, signature)) {
+        console.error('[Webhook] Invalid signature');
+        reply.code(401).send({ error: 'Invalid signature' });
+        return;
+      }
+
+      const event = req.headers['x-wc-webhook-topic'] as string;
+      const orderData = req.body as any;
+
+      // Process webhook
+      await processWooWebhook(event, orderData);
+
+      reply.code(200).send({ received: true });
+    } catch (err: any) {
+      console.error('[Webhook] Error:', err);
+      reply.code(500).send({ error: err.message });
+    }
+  });
+
+  // Protected endpoints (require auth)
+  app.addHook('preHandler', authGuard);
 
   app.get('/overview', async () => {
     const [paidRevenue, pending15m, paymentsDetected, manualConfirm, statuses] = await Promise.all([
