@@ -25,8 +25,14 @@ model Order {
   customerFirstName     String?
   customerLastName      String?
   customerEmail         String?
+  itemsJson             Json?
+  tagsJson              Json?
+  wooRaw                Json?
+  source                String    @default("poll")
   paymentConfirmed      Boolean   @default(false)
+  paymentConfirmedAt    DateTime?
   orderMarkedProcessed  Boolean   @default(false)
+  processedAt           DateTime?
   matchedPaymentId      String?
   createdAtWoo          DateTime
   lastSyncedAt          DateTime  @default(now())
@@ -35,22 +41,29 @@ model Order {
 
   paymentEvents PaymentEvent[]
   followUps     FollowUpTask[]
+  notes         OrderNote[]
 }
 
 model PaymentEvent {
   id              String   @id @default(cuid())
   provider        String
-  providerRef     String?
+  providerRef     String?  @unique
+  gmailMessageId  String?
   amount          Decimal  @db.Decimal(10,2)
   currency        String   @default("USD")
   payerEmail      String?
   payerName       String?
   detectedAt      DateTime
-  confidence      Int
+  confidence      Decimal  @db.Decimal(3,2) @default(0)
+  matchMethod     String?
   rawSnippet      String?
+  emailSubject    String?
+  rawEmail        Json?
   matchedOrderId  String?
+  matchedBy       String?
   decision        String   @default("pending")
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   matchedOrder Order? @relation(fields: [matchedOrderId], references: [id])
 }
@@ -58,10 +71,15 @@ model PaymentEvent {
 model FollowUpTask {
   id              String   @id @default(cuid())
   orderId         String
-  status          String   @default("open")
-  messageText     String
+  status          String   @default("scheduled")
+  scheduledAt     DateTime
+  sentAt          DateTime?
+  attemptNumber   Int      @default(1)
+  templateUsed    String   @default("default")
+  draftContent    String   @db.Text
   gmailDraftId    String?
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   order Order @relation(fields: [orderId], references: [id])
 }
@@ -82,9 +100,31 @@ model IntegrationSecret {
 }
 
 model AuditLog {
+  id            String   @id @default(cuid())
+  actor         String
+  action        String
+  resourceType  String?
+  resourceId    String?
+  beforeState   Json?
+  afterState    Json?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+}
+
+model OrderNote {
   id        String   @id @default(cuid())
-  actor     String
-  action    String
-  details   Json
+  orderId   String
+  userId    String?
+  note      String   @db.Text
+  internal  Boolean  @default(true)
   createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
 }
